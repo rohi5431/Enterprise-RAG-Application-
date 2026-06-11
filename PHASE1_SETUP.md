@@ -263,25 +263,9 @@ base_url="http://localhost:11434"
 - Check Qdrant collection has points
 - Ensure embeddings were generated properly
 
-## Next Steps (Phase 2)
-- Authentication & user management
-- Chat history persistence
-- Advanced retrieval (hybrid search, re-ranking)
-- Multiple document types (DOCX, TXT)
-- Response streaming
-- Performance optimization
-
 ## Performance Metrics
 
 - Embedding generation: ~100ms per chunk
 - Vector search: <10ms for 5 results
 - LLM response: 2-5s (depends on model)
 - Document upload: <5s for typical PDF
-
-## Support
-
-For issues or questions:
-1. Check logs in terminal
-2. Verify all services are running
-3. Review Phase1_SETUP.md
-4. Check API docs at /docs endpoint
