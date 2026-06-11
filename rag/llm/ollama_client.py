@@ -1,0 +1,64 @@
+"""
+Ollama LLM Client — wraps local Ollama service calls
+"""
+from __future__ import annotations
+
+import logging
+import json
+import requests
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+class OllamaClient:
+    """Local Ollama client utilizing request configuration and timeouts from settings."""
+
+    def __init__(self, base_url: str | None = None, model: str | None = None) -> None:
+        self.base_url = base_url or settings.OLLAMA_BASE_URL
+        self.model = model or settings.OLLAMA_MODEL
+        self.timeout = settings.OLLAMA_TIMEOUT
+
+    def generate(self, prompt: str, stream: bool = False) -> str:
+        """Call Ollama generation endpoint for the prompt."""
+        url = f"{self.base_url}/api/generate"
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": stream,
+        }
+
+        try:
+            logger.info("OllamaClient: Generating with model=%s", self.model)
+            response = requests.post(url, json=payload, timeout=self.timeout)
+            
+            if response.status_code != 200:
+                logger.error("Ollama API failed with status %d: %s", response.status_code, response.text)
+                raise RuntimeError(f"Ollama API returned status {response.status_code}")
+
+            if stream:
+                full_response = []
+                for line in response.iter_lines():
+                    if line:
+                        data = json.loads(line)
+                        full_response.append(data.get("response", ""))
+                return "".join(full_response)
+            else:
+                data = response.json()
+                return data.get("response", "")
+
+        except requests.Timeout as exc:
+            logger.error("Ollama client request timed out after %d seconds", self.timeout)
+            raise RuntimeError(f"Ollama generation timed out: {exc}")
+        except Exception as exc:
+            logger.error("Ollama generation error: %s", exc)
+            raise RuntimeError(f"Ollama generation failed: {exc}")
+
+    def is_available(self) -> bool:
+        """Check if local Ollama service tag list is reachable."""
+        try:
+            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            return response.status_code == 200
+        except Exception:
+            return False
