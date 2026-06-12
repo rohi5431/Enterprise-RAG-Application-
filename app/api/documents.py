@@ -47,15 +47,47 @@ async def upload_document(
         tags=[t.strip() for t in tags.split(",")] if tags else [],
     )
     # Queue background ingestion
+    # Queue background ingestion
     try:
-        from app.workers.celery_app import celery_app
         from app.tasks.ingestion_tasks import ingest_document_task
-        task = ingest_document_task.delay(doc.id, save_path, ext)
+    
+        print("Before delay")
+    
+        task = ingest_document_task.delay(
+            doc.id,
+            save_path,
+            ext
+        )
+    
+        print("After delay")
+        print("TASK CREATED")
+        print("Task ID =", task.id)
+    
         svc.update_task_id(doc.id, task.id)
-    except Exception:
-        pass  # task queuing is best-effort
-        # Fallback to FastAPI background task if Celery is not running
-        def run_ingestion_fallback():
+    
+    except Exception as e:
+        import traceback
+    
+        print("CELERY ERROR =", str(e))
+        traceback.print_exc()
+
+    # Fallback to FastAPI background task
+    def run_ingestion_fallback():
+        from app.tasks.ingestion_tasks import ingest_document_task
+
+        class DummyTask:
+            request = type("Request", (), {"retries": 0})()
+
+            def retry(self, exc, countdown):
+                raise exc
+
+        try:
+            ingest_document_task(DummyTask(), doc.id, save_path, ext)
+        except Exception as e:
+            print("FALLBACK ERROR:", e)
+
+    background_tasks.add_task(run_ingestion_fallback)
+    def run_ingestion_fallback():
             from app.tasks.ingestion_tasks import ingest_document_task
             class DummyTask:
                 request = type('Request', (), {'retries': 0})()
@@ -63,8 +95,9 @@ async def upload_document(
                     raise exc
             try:
                 ingest_document_task(DummyTask(), doc.id, save_path, ext)
-            except Exception:
-                pass
+            except Exception as e:
+                print("CELERY ERROR:", e)
+                raise
                 
         background_tasks.add_task(run_ingestion_fallback)
     return doc

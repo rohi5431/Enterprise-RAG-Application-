@@ -19,7 +19,8 @@ from app.db.session import engine
 import app.models  # noqa: F401
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
-
+print("QDRANT_URL =", settings.QDRANT_URL)
+print("QDRANT_API_KEY =", settings.QDRANT_API_KEY)
 setup_logging()
 logger = get_logger(__name__)
 
@@ -96,7 +97,9 @@ def root():
 @app.get("/health", tags=["Health"])
 def health():
     from app.db.session import engine
-    checks: dict = {}
+
+    checks = {}
+
     # DB check
     try:
         with engine.connect() as conn:
@@ -104,22 +107,35 @@ def health():
         checks["database"] = "ok"
     except Exception as e:
         checks["database"] = f"error: {e}"
+
     # Redis check
     try:
         import redis
+
         r = redis.from_url(settings.REDIS_URL)
         r.ping()
         checks["redis"] = "ok"
     except Exception as e:
         checks["redis"] = f"error: {e}"
+
     # Qdrant check
     try:
         from qdrant_client import QdrantClient
-        qc = QdrantClient(url=settings.QDRANT_URL)
+
+        qc = QdrantClient(
+            url=settings.QDRANT_URL,
+            api_key=settings.QDRANT_API_KEY,
+        )
+
         qc.get_collections()
         checks["qdrant"] = "ok"
+
     except Exception as e:
         checks["qdrant"] = f"error: {e}"
 
     healthy = all(v == "ok" for v in checks.values())
-    return {"status": "healthy" if healthy else "degraded", "checks": checks}
+
+    return {
+        "status": "healthy" if healthy else "degraded",
+        "checks": checks,
+    }

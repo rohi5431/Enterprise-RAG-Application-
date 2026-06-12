@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 from typing import List, Dict, Any
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,9 @@ class TextChunker:
                 })
                 sequence_number += 1
 
-        logger.info("chunking_complete", doc_id=doc_id, total_chunks=len(chunks))
+        logger.info(
+        f"chunking_complete doc_id={doc_id} total_chunks={len(chunks)}"
+        )
         return chunks
 
     def _count_tokens(self, text: str) -> int:

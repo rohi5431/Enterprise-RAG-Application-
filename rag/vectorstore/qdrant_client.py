@@ -1,14 +1,15 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
+from app.core.config import settings
 import uuid
 
 client = QdrantClient(
-    host="localhost",
-    port=6333
+    url=settings.QDRANT_URL,
+    api_key=settings.QDRANT_API_KEY
 )
 
-COLLECTION_NAME = "documents"
-VECTOR_SIZE = 384
+COLLECTION_NAME = settings.QDRANT_COLLECTION_NAME
+VECTOR_SIZE = settings.QDRANT_VECTOR_SIZE
 
 def create_collection():
     if not client.collection_exists(COLLECTION_NAME):

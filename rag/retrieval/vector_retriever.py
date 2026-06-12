@@ -125,6 +125,11 @@ class VectorRetriever:
         """Embed *query* and run one Qdrant search call."""
         embedding: np.ndarray = self._embedder.embed_query(query)
 
+        print("\n===== VECTOR SEARCH =====")
+        print("COLLECTION =", self._collection)
+        print("QUERY =", query)
+        print("FILTER =", qdrant_filter)
+        
         try:
             hits: List[ScoredPoint] = self._client.search(
                 collection_name=self._collection,
@@ -133,6 +138,8 @@ class VectorRetriever:
                 query_filter=qdrant_filter,
                 with_payload=True,
             )
+        
+            print("HITS FOUND =", len(hits))
         except Exception as exc:
             logger.error("Qdrant search failed: %s", exc)
             return []

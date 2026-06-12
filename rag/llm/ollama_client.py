@@ -26,12 +26,33 @@ class OllamaClient:
         payload = {
             "model": self.model,
             "prompt": prompt,
-            "stream": stream,
+            "stream": False,
+            "options": {
+                "num_predict": 300,
+                "temperature": 0.1
+                # "num_ctx": 2048
+            }
         }
 
         try:
             logger.info("OllamaClient: Generating with model=%s", self.model)
-            response = requests.post(url, json=payload, timeout=self.timeout)
+            print("🔥 CALLING OLLAMA API...")
+
+            print("URL =", url)
+            print("MODEL =", self.model)
+            with open("last_prompt.txt", "w", encoding="utf-8") as f:
+                f.write(prompt)
+            
+            print("PROMPT SAVED")
+            print("PROMPT SIZE =", len(prompt))
+            response = requests.post(
+                url,
+                json=payload,
+                timeout=(10,300),
+                stream=True
+            )
+            
+            print("🔥 OLLAMA RESPONDED")
             
             if response.status_code != 200:
                 logger.error("Ollama API failed with status %d: %s", response.status_code, response.text)
@@ -46,8 +67,11 @@ class OllamaClient:
                 return "".join(full_response)
             else:
                 data = response.json()
-                return data.get("response", "")
 
+                print("🔥 RESPONSE JSON RECEIVED")
+                print(data)
+                
+                return data.get("response", "")
         except requests.Timeout as exc:
             logger.error("Ollama client request timed out after %d seconds", self.timeout)
             raise RuntimeError(f"Ollama generation timed out: {exc}")

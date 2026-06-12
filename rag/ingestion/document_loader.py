@@ -28,7 +28,9 @@ class DocumentLoader:
             raise ValueError(f"Unsupported file type: {ext}")
         
         pages = loader_fn(file_path)
-        logger.info("document_loaded", file=file_path, pages=len(pages), type=ext)
+        logger.info(
+        f"document_loaded file={file_path} pages={len(pages)} type={ext}"
+        )
         return pages
 
     def _load_pdf(self, file_path: str) -> List[Dict[str, Any]]:

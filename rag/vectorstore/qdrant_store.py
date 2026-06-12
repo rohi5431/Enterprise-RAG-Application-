@@ -97,10 +97,14 @@ class QdrantVectorStore:
 
         try:
             logger.info("Upserting %d points to collection %s", len(points), self.collection_name)
-            self.client.upsert(
+            result = self.client.upsert(
                 collection_name=self.collection_name,
                 points=points,
             )
+            print("UPSERT RESULT =", result)
+            print("COLLECTION =", self.collection_name)
+            print("POINTS =", len(points))
+            
             return point_ids
         except Exception as exc:
             logger.error("Failed to upsert points to Qdrant: %s", exc)

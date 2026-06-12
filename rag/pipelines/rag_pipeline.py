@@ -74,7 +74,7 @@ class AdvancedRAGPipeline:
         query_expander: Optional[QueryExpander] = None,
         hybrid_retriever: Optional[HybridRetriever] = None,
         llm: Optional[OllamaClient] = None,
-        mode: RetrievalMode = RetrievalMode.HYBRID_RERANKED,
+        mode: RetrievalMode = RetrievalMode.VECTOR,
     ) -> None:
         self._expander = query_expander or QueryExpander(n_expansions=3)
         self._retriever = hybrid_retriever or HybridRetriever()
@@ -93,11 +93,11 @@ class AdvancedRAGPipeline:
         self,
         query: str,
         *,
-        top_k: int = 10,
-        final_top_k: int = 5,
+        top_k: int = 2,
+        final_top_k: int = 2,
         mode: Optional[RetrievalMode] = None,
         filters: Optional[MetadataFilter] = None,
-        expand_query: bool = True,
+        expand_query: bool = False,
     ) -> Dict:
         """
         Execute the full pipeline for *query*.
@@ -150,7 +150,22 @@ class AdvancedRAGPipeline:
         # ── 3. Hybrid retrieval (vector + BM25 + rerank) ───────────────
         try:
             result: RetrievalResult = self._retriever.retrieve(request)
+
+            print("\n===== RETRIEVAL RESULT =====")
+            print("VECTOR CANDIDATES =", result.vector_candidates)
+            print("BM25 CANDIDATES =", result.bm25_candidates)
+            print("CHUNKS AFTER RETRIEVAL =", len(result.chunks))
+            
             chunks = result.chunks
+
+            print("\n===== CHUNKS FOUND =====")
+            print("COUNT =", len(chunks))
+            
+            for i, c in enumerate(chunks[:3]):
+                print(f"\nChunk {i+1}")
+                print("Doc:", c.doc_id)
+                print("Score:", c.score)
+                print("Text:", c.text[:500])
         except Exception as exc:
             logger.error("[%s] Retrieval failed: %s", query_id, exc)
             error_msg = str(exc)
@@ -171,6 +186,12 @@ class AdvancedRAGPipeline:
             prompt = get_rag_prompt(question=query, context=context)
 
             try:
+                print("\n===== CONTEXT SENT TO OLLAMA =====")
+                print(context[:3000])
+                
+                print("\n===== PROMPT SENT TO OLLAMA =====")
+                print(prompt[:5000])
+                print("\nPROMPT LENGTH =", len(prompt))
                 answer = self._llm.generate(prompt)
             except Exception as exc:
                 logger.error("[%s] LLM generation failed: %s", query_id, exc)
@@ -230,7 +251,8 @@ class AdvancedRAGPipeline:
         for i, chunk in enumerate(chunks, start=1):
             source = chunk.doc_title or chunk.doc_filename or f"Doc {chunk.doc_id}"
             parts.append(f"[{i}] ({source})\n{chunk.text}")
-        return "\n\n---\n\n".join(parts)
+        context = "\n\n---\n\n".join(parts)
+        return context[:1000]
 
     @staticmethod
     def _build_sources(chunks: List[RetrievedChunk]) -> List[Dict]:
