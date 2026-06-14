@@ -82,6 +82,14 @@ The system allows users to upload documents, converts them into vector embedding
 ```
 
 ---
+## 🔐 User Authentication
+<img width="745" height="814" alt="image" src="https://github.com/user-attachments/assets/d6bf9bd6-6a65-4e47-a4e3-d22066f75236" />
+
+<img width="1140" height="735" alt="image" src="https://github.com/user-attachments/assets/c2c6f189-7f26-48bd-9e2e-945a18333480" />
+
+## 💬 AI Chat Interface
+<img width="1914" height="930" alt="image" src="https://github.com/user-attachments/assets/2e48ace8-0163-47ee-b021-dc8aaecea7af" />
+
 
 ## 🔄 RAG Pipeline
 
