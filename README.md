@@ -84,8 +84,7 @@ The system allows users to upload documents, converts them into vector embedding
 
 ```
 ## Architecture Overview
-<img width="4537" height="6854" alt="React Frontend Chat Stream-2026-06-15-193136" src="https://github.com/user-attachments/assets/370ea451-e46f-41f3-b953-8c5c8f677795" />
-
+<img width="3391" height="6854" alt="React Frontend Chat Stream-2026-06-15-193308" src="https://github.com/user-attachments/assets/9d1541af-b0b2-4a00-af73-1aef98fd3257" />
 
 ---
 ## 🔐 User Authentication
