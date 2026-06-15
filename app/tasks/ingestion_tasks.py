@@ -125,9 +125,21 @@ def ingest_document_task(self, doc_id: int, file_path: str, file_type: str) -> d
         loader = DocumentLoader()
         pages = loader.load(file_path, file_type)
 
-        full_text = "\n\n".join(
-            page["text"] for page in pages
-        )
+        # 1b. Extract tables from PDFs
+        table_records = []
+        if settings.TABLE_EXTRACTION_ENABLED and file_type.lower() in ("pdf",):
+            from rag.ingestion.table_extractor import TableExtractor
+            from app.models.extracted_table import ExtractedTable
+            tables = TableExtractor().extract(file_path)
+            for tbl in tables:
+                table_records.append(tbl)
+                pages.append({
+                    "text": f"[TABLE page {tbl['page_number']}]\n{tbl['table_text']}",
+                    "page_number": tbl["page_number"],
+                    "metadata": {"source": file_path, "type": "table"},
+                })
+
+        full_text = "\n\n".join(page["text"] for page in pages)
 
         # 2. Chunk
         chunker = TextChunker(
@@ -167,11 +179,19 @@ def ingest_document_task(self, doc_id: int, file_path: str, file_type: str) -> d
             embeddings=embeddings,
         )
         # 5. Build BM25 Index
-
         bm25 = get_bm25()
-        
+        owner_id = None
+        doc_title = None
+        doc_filename = None
+
+        with get_db_context() as db:
+            doc = DocumentRepository(db).get(doc_id)
+            if doc:
+                owner_id = doc.owner_id
+                doc_title = doc.title
+                doc_filename = doc.filename
+
         bm25_chunks = []
-        
         for point_id, chunk in zip(point_ids, chunks):
             bm25_chunks.append(
                 {
@@ -180,25 +200,13 @@ def ingest_document_task(self, doc_id: int, file_path: str, file_type: str) -> d
                     "text": chunk["text"],
                     "tags": chunk.get("tags", []),
                     "page_number": chunk.get("page_number"),
+                    "user_id": owner_id,
+                    "doc_title": doc_title,
+                    "doc_filename": doc_filename,
                 }
             )
-        
+
         bm25.build_index(bm25_chunks)
-        print("BM25 READY =", bm25.is_ready)
-        print("BM25 CORPUS =", bm25.corpus_size)
-        
-        test_results = bm25.retrieve(
-            RetrievalRequest(
-                query="Node.js",
-                top_k=5
-            )
-        )
-        
-        print("BM25 TEST RESULTS =", len(test_results))
-                
-        print("\n===== BM25 STATUS =====")
-        print("BM25 READY =", bm25.is_ready)
-        print("BM25 CORPUS =", bm25.corpus_size)
         # 5. Update DB
         with get_db_context() as db:
             repo = DocumentRepository(db)
@@ -238,6 +246,19 @@ def ingest_document_task(self, doc_id: int, file_path: str, file_type: str) -> d
                 doc.content = full_text[:50000]
                 doc.content_length = len(full_text)
                 doc.page_count = len(pages)
+                db.commit()
+
+            if table_records:
+                from app.models.extracted_table import ExtractedTable
+                for tbl in table_records:
+                    db.add(ExtractedTable(
+                        document_id=doc_id,
+                        page_number=tbl["page_number"],
+                        table_index=tbl["table_index"],
+                        table_data=tbl["table_data"],
+                        table_text=tbl["table_text"],
+                        extraction_method=tbl["extraction_method"],
+                    ))
                 db.commit()
 
         logger.info(

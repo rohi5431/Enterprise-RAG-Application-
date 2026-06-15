@@ -41,14 +41,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 
     try:
         bm25 = get_bm25()
-    
         db: Session = SessionLocal()
-    
+        from app.models.document import Document
+
         chunks = db.query(Chunk).all()
-    
         bm25_chunks = []
-    
+
         for chunk in chunks:
+            doc = db.query(Document).filter(Document.id == chunk.document_id).first()
             bm25_chunks.append(
                 {
                     "chunk_id": chunk.qdrant_point_id or str(chunk.id),
@@ -56,20 +56,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
                     "text": chunk.text,
                     "tags": chunk.tags or [],
                     "page_number": chunk.page_number,
+                    "user_id": doc.owner_id if doc else None,
+                    "doc_title": doc.title if doc else None,
+                    "doc_filename": doc.filename if doc else None,
                 }
             )
-    
+
         if bm25_chunks:
             bm25.build_index(bm25_chunks)
-    
-        print("\n===== BM25 STARTUP =====")
-        print("BM25 READY =", bm25.is_ready)
-        print("BM25 CORPUS =", bm25.corpus_size)
-    
+
+        logger.info("BM25 startup: ready=%s corpus=%d", bm25.is_ready, bm25.corpus_size)
         db.close()
-    
     except Exception as e:
-        print("BM25 STARTUP ERROR =", e)
+        logger.warning("BM25 startup error: %s", e)
     
     yield
     logger.info("shutdown", app=settings.APP_NAME)

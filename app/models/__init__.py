@@ -9,6 +9,9 @@ from app.models.chat import ChatSession, ChatMessage, MessageRole
 from app.models.feedback import ResponseFeedback
 from app.models.query_log import QueryLog
 from app.models.audit_log import AuditLog
+from app.models.user_preferences import UserPreferences
+from app.models.evaluation_log import EvaluationLog
+from app.models.extracted_table import ExtractedTable
 
 __all__ = [
     "User", "UserRole",
@@ -17,4 +20,7 @@ __all__ = [
     "ResponseFeedback",
     "QueryLog",
     "AuditLog",
+    "UserPreferences",
+    "EvaluationLog",
+    "ExtractedTable",
 ]

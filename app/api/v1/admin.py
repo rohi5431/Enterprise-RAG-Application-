@@ -76,6 +76,26 @@ def get_analytics(
     return AdminService(db).get_query_analytics(days)
 
 
+@router.get("/analytics/summary")
+def get_feedback_analytics(
+    days: int = Query(default=30, ge=1, le=365),
+    admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Feedback statistics for admin dashboard."""
+    return AdminService(db).get_feedback_analytics(days)
+
+
+@router.get("/analytics/timeseries")
+def get_timeseries(
+    days: int = Query(default=30, ge=1, le=365),
+    admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Daily query/upload/latency timeseries for charts."""
+    return AdminService(db).get_timeseries(days)
+
+
 @router.get("/monitoring")
 def get_monitoring(
     admin: User = Depends(get_current_admin),
@@ -84,13 +104,13 @@ def get_monitoring(
     """Live system monitoring metrics."""
     import redis as redis_lib
     from app.core.config import settings
-    metrics: dict = {}
+    from app.services.cache_service import get_cache_service
+    metrics: dict = {"cache": get_cache_service().get_stats()}
     try:
         r = redis_lib.from_url(settings.REDIS_URL)
         info = r.info()
         metrics["redis_connected_clients"] = info.get("connected_clients", 0)
         metrics["redis_used_memory_mb"] = round(info.get("used_memory", 0) / (1024 * 1024), 2)
-        metrics["redis_ops_per_sec"] = info.get("instantaneous_ops_per_sec", 0)
         metrics["redis_status"] = "ok"
     except Exception as e:
         metrics["redis_status"] = f"error: {e}"

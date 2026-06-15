@@ -79,8 +79,12 @@ class Settings(BaseSettings):
 
     # ─── OpenAI (optional) ─────────────────────────────────────────────────────
     OPENAI_API_KEY: Optional[str] = None
-    OPENAI_MODEL: str = "gpt-4o-mini"
-    LLM_PROVIDER: str = "ollama"  # ollama | openai
+    OPENAI_MODEL: str = "gpt-4o"
+    LLM_PROVIDER: str = "ollama"  # ollama | openai | gemini
+
+    # ─── Gemini (optional) ─────────────────────────────────────────────────────
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-2.0-flash"
 
     # ─── Embedding ─────────────────────────────────────────────────────────────
     EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
@@ -97,14 +101,20 @@ class Settings(BaseSettings):
     MAX_CHUNKS_PER_DOC: int = 2000
 
     # ─── Retrieval ─────────────────────────────────────────────────────────────
-    RETRIEVAL_TOP_K: int = 20
+    RETRIEVAL_TOP_K: int = 10
     RETRIEVAL_FINAL_TOP_K: int = 5
     QUERY_EXPANSION_COUNT: int = 3
+    QUERY_EXPANSION_ENABLED: bool = True
+
+    # ─── Cache ─────────────────────────────────────────────────────────────────
+    CACHE_ENABLED: bool = True
 
     # ─── File Upload ───────────────────────────────────────────────────────────
     UPLOAD_DIR: str = "uploads/docs"
     MAX_FILE_SIZE_MB: int = 50
-    ALLOWED_EXTENSIONS: List[str] = ["pdf", "txt", "docx", "md"]
+    ALLOWED_EXTENSIONS: List[str] = ["pdf", "txt", "docx", "md", "png", "jpg", "jpeg", "tiff"]
+    OCR_ENABLED: bool = True
+    TABLE_EXTRACTION_ENABLED: bool = True
 
     # ─── Rate Limiting ─────────────────────────────────────────────────────────
     RATE_LIMIT_ENABLED: bool = True

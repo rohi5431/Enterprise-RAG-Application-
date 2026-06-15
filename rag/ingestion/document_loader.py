@@ -1,19 +1,22 @@
 """
-Document Loader — parses PDF, DOCX, TXT, and MD files into page dicts
+Document Loader — parses PDF, DOCX, TXT, MD, and image files into page dicts.
 """
 from __future__ import annotations
 
 import logging
 import zipfile
 import xml.etree.ElementTree as ET
-from pathlib import Path
 from typing import List, Dict, Any
+
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class DocumentLoader:
-    """Load documents of various formats into a list of page dicts: [{'text': str, 'page_number': int, 'metadata': dict}]"""
+    """Load documents of various formats into page dicts."""
+
+    IMAGE_EXT = {"png", "jpg", "jpeg", "tiff", "bmp", "webp"}
 
     def load(self, file_path: str, file_type: str) -> List[Dict[str, Any]]:
         ext = file_type.lower().lstrip(".")
@@ -23,15 +26,32 @@ class DocumentLoader:
             "txt": self._load_txt,
             "md": self._load_md,
         }
+        if ext in self.IMAGE_EXT:
+            return self._load_image(file_path)
         loader_fn = dispatch.get(ext)
         if not loader_fn:
             raise ValueError(f"Unsupported file type: {ext}")
-        
+
         pages = loader_fn(file_path)
-        logger.info(
-        f"document_loaded file={file_path} pages={len(pages)} type={ext}"
-        )
+
+        if settings.OCR_ENABLED and ext == "pdf" and self._needs_ocr(pages):
+            from rag.ingestion.ocr_loader import OCRLoader
+            ocr_pages = OCRLoader().extract_from_scanned_pdf(file_path)
+            if ocr_pages:
+                pages = ocr_pages
+
+        logger.info("document_loaded file=%s pages=%d type=%s", file_path, len(pages), ext)
         return pages
+
+    def _needs_ocr(self, pages: List[Dict[str, Any]]) -> bool:
+        if not pages:
+            return True
+        total_text = sum(len(p.get("text", "")) for p in pages)
+        return total_text < 100
+
+    def _load_image(self, file_path: str) -> List[Dict[str, Any]]:
+        from rag.ingestion.ocr_loader import OCRLoader
+        return OCRLoader().extract_from_image(file_path)
 
     def _load_pdf(self, file_path: str) -> List[Dict[str, Any]]:
         pages = []

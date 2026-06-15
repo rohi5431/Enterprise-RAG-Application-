@@ -87,10 +87,13 @@ class DocumentService:
         self,
         owner_id: Optional[int] = None,
         status: Optional[str] = None,
+        search: Optional[str] = None,
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[List[Document], int]:
-        return self.repo.list_documents(owner_id=owner_id, status=status, skip=skip, limit=limit)
+        return self.repo.list_documents(
+            owner_id=owner_id, status=status, search=search, skip=skip, limit=limit
+        )
 
     def delete_document(self, doc_id: int, user_id: int, is_admin: bool = False) -> bool:
         doc = self.get_document(doc_id)

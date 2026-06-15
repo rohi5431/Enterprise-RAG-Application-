@@ -38,6 +38,25 @@ class DocumentListResponse(BaseModel):
     total: int
 
 
+class ChunkPreviewResponse(BaseModel):
+    chunk_id: str
+    doc_id: int
+    text: str
+    page_number: int | None
+    sequence_number: int | None
+
+
+class SemanticSearchResult(BaseModel):
+    chunk_id: str
+    doc_id: int
+    doc_title: str | None
+    doc_filename: str | None
+    page_number: int | None
+    text: str
+    score: float
+    highlight: str
+
+
 class JobStatusResponse(BaseModel):
     task_id: str
     status: str

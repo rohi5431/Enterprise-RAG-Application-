@@ -32,11 +32,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _LLM_EXPAND_PROMPT = """\
-You are a search query optimization expert.
+You are a search query optimization expert for a document retrieval system.
 
-Given the following user query, generate {n} alternative queries that cover
-the same intent from different angles.  Each alternative should be on its
-own line, without numbering or bullet points.
+Given the user query, generate {n} alternative search queries that retrieve the same facts from PDF resumes, CVs, and technical documents.
+
+Guidelines:
+- Include section headings when relevant (e.g., PROJECT EXPERIENCE, ACHIEVEMENTS, EDUCATION).
+- Replace vague phrases like "inside the resume" with concrete keywords from the question topic.
+- Keep each alternative on its own line with no numbering or bullets.
+- Preserve specific names, technologies, and section references from the original query.
 
 Original query: {query}
 
@@ -184,6 +188,7 @@ class QueryExpander:
         1. Drop stop-words → shorter keyword query
         2. Prefix with "explain" → encourages definitional context
         3. Prefix with "how does" → encourages procedural context
+        4. Resume/project hints → targets common CV section headings
         """
         words = query.lower().split()
         keywords = [w for w in words if w not in _STOP_WORDS and len(w) > 2]
@@ -193,4 +198,11 @@ class QueryExpander:
             variants.append(" ".join(keywords))
         variants.append(f"explain {query}")
         variants.append(f"how does {query} work")
+
+        lowered = query.lower()
+        if any(term in lowered for term in ("project", "portfolio", "experience")):
+            variants.append("PROJECT EXPERIENCE section resume CV")
+        if any(term in lowered for term in ("achievement", "certificate", "leetcode", "rating")):
+            variants.append("ACHIEVEMENTS CERTIFICATES section resume")
+
         return variants[: self.n_expansions]

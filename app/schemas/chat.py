@@ -10,6 +10,9 @@ class ChatRequest(BaseModel):
     top_k: int = Field(default=10, ge=1, le=50)
     final_top_k: int = Field(default=3, ge=1, le=20)
     filters: dict | None = None
+    expand_query: bool | None = None
+    show_diagnostics: bool = False
+    stream: bool = False
 
 
 class CitationResponse(BaseModel):
@@ -25,6 +28,20 @@ class CitationResponse(BaseModel):
     rerank_score: float | None
 
 
+class RetrievalDiagnostics(BaseModel):
+    embedding_ms: float = 0
+    vector_ms: float = 0
+    bm25_ms: float = 0
+    fusion_ms: float = 0
+    rerank_ms: float = 0
+    total_ms: float = 0
+    vector_candidates: int = 0
+    bm25_candidates: int = 0
+    total_candidates: int = 0
+    expanded_queries: list[str] = []
+    cache_hit: bool = False
+
+
 class ChatResponse(BaseModel):
     answer: str
     query: str
@@ -38,6 +55,7 @@ class ChatResponse(BaseModel):
     llm_latency_ms: float
     total_latency_ms: float
     cache_hit: bool = False
+    diagnostics: RetrievalDiagnostics | None = None
 
 
 class SessionCreate(BaseModel):

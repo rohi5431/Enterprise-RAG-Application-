@@ -22,6 +22,7 @@ class DocumentRepository(BaseRepository[Document]):
         self,
         owner_id: Optional[int] = None,
         status: Optional[str] = None,
+        search: Optional[str] = None,
         skip: int = 0,
         limit: int = 50,
     ) -> Tuple[List[Document], int]:
@@ -30,6 +31,11 @@ class DocumentRepository(BaseRepository[Document]):
             q = q.filter(Document.owner_id == owner_id)
         if status:
             q = q.filter(Document.processing_status == status)
+        if search:
+            pattern = f"%{search}%"
+            q = q.filter(
+                (Document.title.ilike(pattern)) | (Document.filename.ilike(pattern))
+            )
         total = q.count()
         docs = q.order_by(desc(Document.created_at)).offset(skip).limit(limit).all()
         return docs, total

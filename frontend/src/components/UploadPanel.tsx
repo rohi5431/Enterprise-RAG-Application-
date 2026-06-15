@@ -1,147 +1,62 @@
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { apiUploadDocument } from "../api";
 
-export function UploadPanel({
-  token,
-}: {
-  token: string | null;
-}) {
-  const [files, setFiles] = useState<File[]>([]);
-  const [status, setStatus] = useState("");
+const ACCEPTED_TYPES = ".pdf,.docx,.txt,.md,.png,.jpg,.jpeg";
+
+export function useComposerUpload(token: string) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const openFilePicker = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
-  const handleFiles = (
-    selectedFiles: FileList | null
-  ) => {
-    if (!selectedFiles) return;
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selected = e.target.files;
+      if (!selected?.length) return;
 
-    setFiles(Array.from(selectedFiles));
-  };
-
-  const handleUpload = async () => {
-    if (!files.length) {
-      setStatus("Please select files");
-      return;
-    }
-
-    if (!token) {
-      setStatus("Please login first");
-      return;
-    }
-
-    try {
+      const fileList = Array.from(selected);
       setUploading(true);
-      setStatus("");
+      setStatus(null);
+      setError(null);
 
-      for (const file of files) {
-        const formData = new FormData();
-
-        formData.append("file", file);
-
-        const response = await fetch(
-          "/api/v1/documents/upload",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            body: formData,
-          }
+      try {
+        for (const file of fileList) {
+          await apiUploadDocument(token, file);
+        }
+        setStatus(
+          fileList.length === 1
+            ? `"${fileList[0].name}" uploaded`
+            : `${fileList.length} files uploaded`
         );
-
-        if (!response.ok) {
-          throw new Error(await response.text());
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed");
+      } finally {
+        setUploading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
         }
       }
-
-      setStatus(
-        `✅ ${files.length} file(s) uploaded successfully`
-      );
-
-      setFiles([]);
-    } catch (error) {
-      console.error(error);
-
-      setStatus("❌ Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div className="upload-panel">
-      <div className="upload-header">
-        <h3>Upload Documents</h3>
-
-        <span className="upload-supported">
-          PDF • DOCX • TXT • MD
-        </span>
-      </div>
-
-      <div
-        className="upload-dropzone"
-        onClick={() => inputRef.current?.click()}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          hidden
-          onChange={(e) =>
-            handleFiles(e.target.files)
-          }
-        />
-
-        <div className="upload-icon">
-          📄
-        </div>
-
-        <p>
-          Drag & drop files here or click
-          to browse
-        </p>
-      </div>
-
-      {files.length > 0 && (
-        <div className="upload-files">
-          {files.map((file) => (
-            <div
-              key={file.name}
-              className="upload-file"
-            >
-              <span>{file.name}</span>
-
-              <small>
-                {(
-                  file.size /
-                  1024 /
-                  1024
-                ).toFixed(2)}
-                MB
-              </small>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button
-        className="primary-button"
-        disabled={
-          uploading || files.length === 0
-        }
-        onClick={handleUpload}
-      >
-        {uploading
-          ? "Uploading..."
-          : "Upload Files"}
-      </button>
-
-      {status && (
-        <div className="upload-status">
-          {status}
-        </div>
-      )}
-    </div>
+    },
+    [token]
   );
+
+  const clearStatus = useCallback(() => {
+    setStatus(null);
+    setError(null);
+  }, []);
+
+  return {
+    fileInputRef,
+    uploading,
+    status,
+    error,
+    openFilePicker,
+    handleFileChange,
+    clearStatus,
+    accept: ACCEPTED_TYPES,
+  };
 }
