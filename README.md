@@ -81,38 +81,10 @@ The system allows users to upload documents, converts them into vector embedding
               └───────────────────────┘
 ```
 ```
-flowchart TB
-    subgraph Frontend["React Frontend"]
-        Chat[Chat + Streaming]
-        Citations[CitationPanel]
-        Docs[Document Dashboard]
-        Search[Semantic Search]
-        Admin[Admin Analytics]
-        Settings[Model Switcher]
-    end
 
-    subgraph API["FastAPI /api/v1"]
-        ChatAPI["/chat/message/stream"]
-        DocAPI["/documents/*"]
-        SearchAPI["/search"]
-        Cache[Redis Cache]
-        RBAC[JWT + RBAC]
-    end
-
-    subgraph RAG["RAG Pipeline"]
-        Expand[Query Expansion]
-        Vector[Qdrant Vector]
-        BM25[BM25 Sparse]
-        Fusion[RRF Fusion]
-        Rerank[Cross-Encoder]
-        LLM[Ollama / OpenAI / Gemini]
-    end
-
-    Frontend --> API
-    ChatAPI --> Cache
-    Cache --> RAG
-    RAG --> Expand --> Vector & BM25 --> Fusion --> Rerank --> LLM
 ```
+## Architecture Overview
+<img width="4537" height="6854" alt="React Frontend Chat Stream-2026-06-15-193136" src="https://github.com/user-attachments/assets/370ea451-e46f-41f3-b953-8c5c8f677795" />
 
 
 ---
