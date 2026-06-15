@@ -7,8 +7,8 @@ from app.models.chat import MessageRole
 class ChatRequest(BaseModel):
     query: str = Field(min_length=1, max_length=4096)
     session_id: int | None = None
-    top_k: int = Field(default=20, ge=1, le=50)
-    final_top_k: int = Field(default=5, ge=1, le=20)
+    top_k: int = Field(default=10, ge=1, le=50)
+    final_top_k: int = Field(default=3, ge=1, le=20)
     filters: dict | None = None
 
 

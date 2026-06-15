@@ -88,12 +88,12 @@ class Settings(BaseSettings):
     EMBEDDING_DEVICE: str = "cpu"
 
     # ─── Reranker ──────────────────────────────────────────────────────────────
-    RERANKER_MODEL: str = "BAAI/bge-reranker-base"
+    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     RERANKER_DEVICE: str = "cpu"
 
     # ─── Chunking ──────────────────────────────────────────────────────────────
-    CHUNK_SIZE: int = 512
-    CHUNK_OVERLAP: int = 64
+    CHUNK_SIZE: int = 300
+    CHUNK_OVERLAP: int = 50
     MAX_CHUNKS_PER_DOC: int = 2000
 
     # ─── Retrieval ─────────────────────────────────────────────────────────────

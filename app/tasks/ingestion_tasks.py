@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import sys
 import os
-
+from rag.retrieval.bm25_manager import get_bm25
+from rag.retrieval.schemas import RetrievalRequest
 print("CURRENT WD =", os.getcwd())
 print("PYTHONPATH =", sys.path)
 
@@ -165,7 +166,39 @@ def ingest_document_task(self, doc_id: int, file_path: str, file_type: str) -> d
             chunks=chunks,
             embeddings=embeddings,
         )
+        # 5. Build BM25 Index
 
+        bm25 = get_bm25()
+        
+        bm25_chunks = []
+        
+        for point_id, chunk in zip(point_ids, chunks):
+            bm25_chunks.append(
+                {
+                    "chunk_id": str(point_id),
+                    "doc_id": doc_id,
+                    "text": chunk["text"],
+                    "tags": chunk.get("tags", []),
+                    "page_number": chunk.get("page_number"),
+                }
+            )
+        
+        bm25.build_index(bm25_chunks)
+        print("BM25 READY =", bm25.is_ready)
+        print("BM25 CORPUS =", bm25.corpus_size)
+        
+        test_results = bm25.retrieve(
+            RetrievalRequest(
+                query="Node.js",
+                top_k=5
+            )
+        )
+        
+        print("BM25 TEST RESULTS =", len(test_results))
+                
+        print("\n===== BM25 STATUS =====")
+        print("BM25 READY =", bm25.is_ready)
+        print("BM25 CORPUS =", bm25.corpus_size)
         # 5. Update DB
         with get_db_context() as db:
             repo = DocumentRepository(db)

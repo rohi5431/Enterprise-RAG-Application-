@@ -1,127 +1,225 @@
-import type { ChatResponse, MessageResponse, SessionSummary, TokenResponse, User } from "./types";
+import type {
+  ChatResponse,
+  MessageResponse,
+  SessionSummary,
+  TokenResponse,
+  User,
+} from "./types";
 
-const baseUrl = import.meta.env.VITE_API_URL || "/api/v1";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "/api/v1";
 
-const request = async <T>(path: string, init: RequestInit = {}) => {
-  const response = await fetch(`${baseUrl}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...init.headers,
-    },
-    ...init,
-  });
+/* -------------------------------- */
+/* Generic Request Helper           */
+/* -------------------------------- */
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    if (errorBody) {
-      try {
-        const json = JSON.parse(errorBody) as {
-          detail?: unknown;
-          message?: string;
-        };
-        let detail: string | undefined;
+async function request<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  try {
+    const headers = new Headers(init.headers);
 
-        if (Array.isArray(json.detail)) {
-          detail = json.detail
-            .map((item) => {
-              const parsed = item as { msg?: string };
-              return parsed.msg ?? JSON.stringify(item);
-            })
-            .join("; ");
-        } else if (typeof json.detail === "string") {
-          detail = json.detail;
-        } else if (typeof json.message === "string") {
-          detail = json.message;
-        }
-
-        throw new Error(detail || JSON.stringify(json));
-      } catch {
-        throw new Error(errorBody);
-      }
+    if (!headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
     }
-    throw new Error(response.statusText);
+
+    console.log("=================================");
+    console.log("API URL:", `${API_BASE_URL}${path}`);
+    console.log("METHOD:", init.method);
+    console.log("HEADERS:", Object.fromEntries(headers.entries()));
+    console.log("BODY:", init.body);
+    console.log("=================================");
+
+    const response = await fetch(
+      `${API_BASE_URL}${path}`,
+      {
+        ...init,
+        headers,
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = `Request failed (${response.status})`;
+
+      try {
+        const errorData = await response.json();
+
+        if (Array.isArray(errorData.detail)) {
+          errorMessage = JSON.stringify(
+            errorData.detail,
+            null,
+            2
+          );
+        } else {
+          errorMessage =
+            errorData.detail ||
+            errorData.message ||
+            errorMessage;
+        }
+      } catch {
+        try {
+          errorMessage = await response.text();
+        } catch {
+          //
+        }
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    const contentType =
+      response.headers.get("content-type");
+
+    if (
+      contentType &&
+      contentType.includes("application/json")
+    ) {
+      return response.json();
+    }
+
+    return {} as T;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        "Cannot connect to backend server."
+      );
+    }
+
+    throw error;
   }
+}
 
-  return response.json() as Promise<T>;
-};
+/* -------------------------------- */
+/* Auth Helpers                     */
+/* -------------------------------- */
 
-export const apiLogin = (email: string, password: string) =>
-  request<TokenResponse>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
+const authHeaders = (
+  token: string
+): HeadersInit => ({
+  Authorization: `Bearer ${token}`,
+});
 
-export const apiRegister = (email: string, password: string, full_name: string) =>
-  request<User>("/auth/register", {
-    method: "POST",
-    body: JSON.stringify({ email, password, full_name }),
-  });
+/* -------------------------------- */
+/* Authentication APIs              */
+/* -------------------------------- */
 
-export const apiGetMe = (token: string) =>
-  request<User>("/auth/me", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const apiLogin = (
+  email: string,
+  password: string
+) =>
+  request<TokenResponse>(
+    "/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    }
+  );
 
-export const apiFetchSessions = (token: string) =>
-  request<SessionSummary[]>("/chat/sessions", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const apiRegister = (
+  email: string,
+  password: string,
+  full_name: string
+) =>
+  request<User>(
+    "/auth/register",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        password,
+        full_name,
+      }),
+    }
+  );
 
-export const apiFetchSessionMessages = (token: string, sessionId: number) =>
-  request<MessageResponse[]>(`/chat/sessions/${sessionId}/messages`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export const apiGetMe = (
+  token: string
+) =>
+  request<User>(
+    "/auth/me",
+    {
+      method: "GET",
+      headers: authHeaders(
+        token
+      ),
+    }
+  );
 
-export const apiSendMessage = async (
+/* -------------------------------- */
+/* Sessions APIs                    */
+/* -------------------------------- */
+
+export const apiFetchSessions = (
+  token: string
+) =>
+  request<SessionSummary[]>(
+    "/chat/sessions",
+    {
+      method: "GET",
+      headers: authHeaders(
+        token
+      ),
+    }
+  );
+
+export const apiFetchSessionMessages =
+  (
+    token: string,
+    sessionId: number
+  ) =>
+    request<MessageResponse[]>(
+      `/chat/sessions/${sessionId}/messages`,
+      {
+        method: "GET",
+        headers: authHeaders(
+          token
+        ),
+      }
+    );
+
+/* -------------------------------- */
+/* Chat API                         */
+/* -------------------------------- */
+
+export async function apiSendMessage(
   token: string,
   query: string,
   sessionId?: number,
-  top_k = 20,
-  final_top_k = 5
-) => {
-  // ✅ Validate query before sending
-  if (!query || query.trim().length === 0) {
-    throw new Error("Query cannot be empty");
+  top_k = 10,
+  final_top_k = 3
+): Promise<ChatResponse> {
+  const cleanedQuery = query.trim();
+
+  if (!cleanedQuery) {
+    throw new Error("Message cannot be empty.");
   }
 
-  // ✅ Validate ranges for top_k and final_top_k
   if (top_k < 1 || top_k > 50) {
     throw new Error("top_k must be between 1 and 50");
   }
+
   if (final_top_k < 1 || final_top_k > 20) {
     throw new Error("final_top_k must be between 1 and 20");
   }
 
-  try {
-    return await request<ChatResponse>("/chat/message", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query: query.trim(),          // ✅ required field
-        session_id: sessionId ?? null,
-        top_k,
-        final_top_k,
-        filters: null,                // optional, can be extended later
-      }),
-    });
-  } catch (err: unknown) {
-    // ✅ More descriptive error handling
-    if (err instanceof Error) {
-      throw new Error(`Failed to send message: ${err.message}`);
-    }
-    throw new Error("Failed to send message due to unknown error");
-  }
-};
+  const payload: Record<string, unknown> = {
+    query: cleanedQuery,
+    top_k,
+    final_top_k,
+    filters: null,
+  };
 
+  if (sessionId !== undefined && sessionId !== null) {
+    payload.session_id = sessionId;
+  }
+
+  return request<ChatResponse>("/chat/message", {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(payload),
+  });
+}

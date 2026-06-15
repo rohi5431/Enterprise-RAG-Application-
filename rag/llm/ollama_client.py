@@ -48,7 +48,7 @@ class OllamaClient:
             response = requests.post(
                 url,
                 json=payload,
-                timeout=(10,300),
+                timeout=self.timeout,
                 stream=True
             )
             
@@ -78,6 +78,52 @@ class OllamaClient:
         except Exception as exc:
             logger.error("Ollama generation error: %s", exc)
             raise RuntimeError(f"Ollama generation failed: {exc}")
+        
+    def generate_stream(self, prompt: str):
+        """
+        Stream tokens from Ollama.
+        """
+    
+        url = f"{self.base_url}/api/generate"
+    
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": True,
+            "options": {
+                "num_predict": 300,
+                "temperature": 0.1,
+            },
+        }
+    
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                timeout=self.timeout,
+                stream=True,
+            )
+    
+            response.raise_for_status()
+    
+            for line in response.iter_lines():
+    
+                if not line:
+                    continue
+    
+                data = json.loads(line.decode("utf-8"))
+    
+                token = data.get("response", "")
+    
+                if token:
+                    yield token
+    
+                if data.get("done", False):
+                    break
+    
+        except Exception as exc:
+            logger.error("Streaming generation failed: %s", exc)
+            raise RuntimeError(f"Streaming generation failed: {exc}")
 
     def is_available(self) -> bool:
         """Check if local Ollama service tag list is reachable."""

@@ -16,6 +16,10 @@ from app.core.exceptions import AppException
 from app.core.logger import get_logger, setup_logging
 from app.db.base import Base
 from app.db.session import engine
+from rag.retrieval.bm25_manager import get_bm25
+from app.db.session import SessionLocal
+from sqlalchemy.orm import Session
+from app.models.chunk import Chunk
 import app.models  # noqa: F401
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.rate_limit_middleware import RateLimitMiddleware
@@ -34,6 +38,39 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         env=settings.ENVIRONMENT,
     )
     Base.metadata.create_all(bind=engine)
+
+    try:
+        bm25 = get_bm25()
+    
+        db: Session = SessionLocal()
+    
+        chunks = db.query(Chunk).all()
+    
+        bm25_chunks = []
+    
+        for chunk in chunks:
+            bm25_chunks.append(
+                {
+                    "chunk_id": chunk.qdrant_point_id or str(chunk.id),
+                    "doc_id": chunk.document_id,
+                    "text": chunk.text,
+                    "tags": chunk.tags or [],
+                    "page_number": chunk.page_number,
+                }
+            )
+    
+        if bm25_chunks:
+            bm25.build_index(bm25_chunks)
+    
+        print("\n===== BM25 STARTUP =====")
+        print("BM25 READY =", bm25.is_ready)
+        print("BM25 CORPUS =", bm25.corpus_size)
+    
+        db.close()
+    
+    except Exception as e:
+        print("BM25 STARTUP ERROR =", e)
+    
     yield
     logger.info("shutdown", app=settings.APP_NAME)
 

@@ -19,6 +19,8 @@ import time
 from collections import defaultdict
 from typing import Dict, List, Optional, Tuple
 
+from rag.retrieval.query_expander import QueryExpander
+
 from rag.retrieval.bm25_retriever import BM25Retriever
 from rag.retrieval.schemas import (
     FusionStrategy,
@@ -55,8 +57,14 @@ class HybridRetriever:
         reranker: Optional[CrossEncoderReranker] = None,
     ) -> None:
         self._vector = vector_retriever or VectorRetriever()
-        self._bm25 = bm25_retriever or BM25Retriever()
+        from rag.retrieval.bm25_manager import get_bm25
+
+        self._bm25 = bm25_retriever or get_bm25()
+        print("\n===== HYBRID INIT =====")
+        print("BM25 READY =", self._bm25.is_ready)
+        print("BM25 CORPUS =", self._bm25.corpus_size)
         self._reranker = reranker or CrossEncoderReranker()
+        self._expander = QueryExpander()
 
     # ------------------------------------------------------------------ #
     # Public API                                                           #
@@ -76,6 +84,18 @@ class HybridRetriever:
         """
         latency: Dict[str, float] = {}
         t_total = time.perf_counter()
+        # Query Expansion
+        print("\n===== EXPAND QUERY FLAG =====")
+        print(request.expand_query)
+        if request.expand_query:
+            request.expanded_queries = self._expander.expand(
+                request.query
+            )
+        
+            print("\n===== QUERY EXPANSION =====")
+
+            for q in request.expanded_queries:
+                print("-", q)
 
         # ── Stage 1: Dense retrieval ───────────────────────────────────
         vector_chunks: List[RetrievedChunk] = []
@@ -136,7 +156,8 @@ class HybridRetriever:
             len(final_chunks),
             latency["total_ms"],
         )
-
+        print("\n===== LATENCY =====")
+        print(latency)
         return RetrievalResult(
             query=request.query,
             expanded_queries=request.expanded_queries,

@@ -26,6 +26,7 @@ def send_message(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+
     """
     Multi-turn RAG chat endpoint.
     - Loads or creates a session
@@ -35,6 +36,9 @@ def send_message(
     - Pre-allocates feedback slot
     - Logs analytics
     """
+
+    print("ENDPOINT HIT")
+    print("REQUEST =", req.model_dump())
     t_start = time.perf_counter()
     conv_svc = ConversationService(db)
     feedback_svc = FeedbackService(db)
@@ -51,12 +55,15 @@ def send_message(
     enriched_query = f"{context_prefix}\n\nCurrent question: {req.query}" if context_prefix else req.query
 
     # 3. Build metadata filters
-    filters = MetadataFilter(user_id=current_user.id)
-    if req.filters:
-        if "doc_ids" in req.filters:
-            filters.doc_ids = req.filters["doc_ids"]
-        if "tags" in req.filters:
-            filters.tags = req.filters["tags"]
+    print("CURRENT USER =", current_user.id)
+    # filters = MetadataFilter(user_id=current_user.id
+    filters =  MetadataFilter()
+
+    # if req.filters:
+    #     if "doc_ids" in req.filters:
+    #         filters.doc_ids = req.filters["doc_ids"]
+    #     if "tags" in req.filters:
+    #         filters.tags = req.filters["tags"]
 
     # 4. Run RAG pipeline
     t_rag = time.perf_counter()

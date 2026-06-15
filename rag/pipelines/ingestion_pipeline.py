@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 import os
 from typing import Dict, List, Any
-
+from rag.retrieval.bm25_manager import get_bm25
 from rag.ingestion.document_loader import DocumentLoader
 from rag.chunking.text_chunker import TextChunker
 from rag.embeddings.bge_embedder import BGEEmbedder
@@ -31,6 +31,8 @@ def ingest_document(file_path: str, doc_type: str = "pdf") -> Dict[str, Any]:
             raise ValueError("Document is empty or contains no extractable text")
 
         # 2. Chunk document
+        print("CHUNK_SIZE =", settings.CHUNK_SIZE)
+        print("CHUNK_OVERLAP =", settings.CHUNK_OVERLAP)
         chunker = TextChunker(
             chunk_size=settings.CHUNK_SIZE,
             overlap=settings.CHUNK_OVERLAP,
@@ -49,6 +51,24 @@ def ingest_document(file_path: str, doc_type: str = "pdf") -> Dict[str, Any]:
         store = QdrantVectorStore()
         store.ensure_collection()
         point_ids = store.upsert_chunks(doc_id=0, chunks=chunks, embeddings=embeddings)
+        bm25 = get_bm25()
+
+        bm25_chunks = []
+        
+        for point_id, chunk in zip(point_ids, chunks):
+            bm25_chunks.append({
+                "chunk_id": point_id,
+                "doc_id": 0,
+                "text": chunk["text"],
+                "tags": chunk.get("tags", []),
+                "page_number": chunk.get("page_number"),
+            })
+        
+        bm25.build_index(bm25_chunks)
+        
+        print("\n===== BM25 STATUS =====")
+        print("BM25 READY =", bm25.is_ready)
+        print("BM25 CORPUS =", bm25.corpus_size)
 
         return {
             "status": "success",

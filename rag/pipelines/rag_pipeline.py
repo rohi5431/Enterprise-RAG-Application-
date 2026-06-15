@@ -36,6 +36,9 @@ from typing import Dict, List, Optional
 from app.core.config import settings
 from rag.llm.ollama_client import OllamaClient
 from rag.llm.prompt_templates import get_rag_prompt
+from rag.retrieval.bm25_manager import get_bm25
+from rag.memory.conversation_memory import ConversationMemory
+from rag.prompts.prompt_builder import PromptBuilder
 from rag.retrieval.analytics import RetrievalEvent, get_analytics
 from rag.retrieval.bm25_retriever import BM25Retriever
 from rag.retrieval.hybrid_retriever import HybridRetriever
@@ -74,7 +77,7 @@ class AdvancedRAGPipeline:
         query_expander: Optional[QueryExpander] = None,
         hybrid_retriever: Optional[HybridRetriever] = None,
         llm: Optional[OllamaClient] = None,
-        mode: RetrievalMode = RetrievalMode.VECTOR,
+        mode: RetrievalMode = RetrievalMode.HYBRID_RERANKED,
     ) -> None:
         self._expander = query_expander or QueryExpander(n_expansions=3)
         self._retriever = hybrid_retriever or HybridRetriever()
@@ -84,6 +87,10 @@ class AdvancedRAGPipeline:
         )
         self._default_mode = mode
         self._analytics = get_analytics()
+        
+        # Conversation memory
+        self._memory = ConversationMemory()
+        self._prompt_builder = PromptBuilder()
 
     # ------------------------------------------------------------------ #
     # Public API                                                           #
@@ -93,11 +100,11 @@ class AdvancedRAGPipeline:
         self,
         query: str,
         *,
-        top_k: int = 2,
-        final_top_k: int = 2,
+        top_k: int = 10,
+        final_top_k: int = 3,
         mode: Optional[RetrievalMode] = None,
         filters: Optional[MetadataFilter] = None,
-        expand_query: bool = False,
+        expand_query: bool = True,
     ) -> Dict:
         """
         Execute the full pipeline for *query*.
@@ -132,11 +139,17 @@ class AdvancedRAGPipeline:
         if expand_query:
             try:
                 expanded = self._expander.expand(query)
+                print("\n===== QUERY EXPANSION =====")
+
+                for i, q in enumerate(expanded):
+                    print(f"{i+1}. {q}")
                 logger.debug("[%s] Expanded to %d queries", query_id, len(expanded))
             except Exception as exc:
                 logger.warning("[%s] Query expansion failed: %s", query_id, exc)
 
         # ── 2. Build retrieval request ─────────────────────────────────
+        print("\n===== RAG PIPELINE =====")
+        print("expand_query =", expand_query)
         request = RetrievalRequest(
             query=query,
             mode=mode or self._default_mode,
@@ -161,11 +174,15 @@ class AdvancedRAGPipeline:
             print("\n===== CHUNKS FOUND =====")
             print("COUNT =", len(chunks))
             
-            for i, c in enumerate(chunks[:3]):
-                print(f"\nChunk {i+1}")
-                print("Doc:", c.doc_id)
-                print("Score:", c.score)
-                print("Text:", c.text[:500])
+            for i, c in enumerate(chunks[:10]):
+               print(f"\nChunk {i+1}")
+               print("Source =", c.retriever_source)
+               print("Doc =", c.doc_id)
+               print("Vector =", c.vector_score)
+               print("BM25 =", c.bm25_score)
+               print("Rerank =", c.rerank_score)
+               print("Final =", c.score)
+               print("Text =", c.text[:300])
         except Exception as exc:
             logger.error("[%s] Retrieval failed: %s", query_id, exc)
             error_msg = str(exc)
@@ -181,18 +198,31 @@ class AdvancedRAGPipeline:
         if not chunks:
             answer = "I couldn't find relevant information to answer your question."
             sources = []
-        else:
-            context = self._build_context(chunks)
-            prompt = get_rag_prompt(question=query, context=context)
+        else: 
+            prompt = self._prompt_builder.build(
+                query=query,
+                chunks=chunks,
+                conversation_history=self._memory.get_context(),
+            )
 
             try:
-                print("\n===== CONTEXT SENT TO OLLAMA =====")
-                print(context[:3000])
+                # print("\n===== CONTEXT SENT TO OLLAMA =====")
+                print("\n===== MEMORY =====")
+                print(self._memory.get_context())
                 
                 print("\n===== PROMPT SENT TO OLLAMA =====")
                 print(prompt[:5000])
                 print("\nPROMPT LENGTH =", len(prompt))
+                print("\n===== MEMORY =====")
+                print(self._memory.get_context())
                 answer = self._llm.generate(prompt)
+
+            #    self._memory.add_user(query)
+            #    self._memory.add_assistant(answer)
+
+                # Save conversation
+                self._memory.add_user(query)
+                self._memory.add_assistant(answer)
             except Exception as exc:
                 logger.error("[%s] LLM generation failed: %s", query_id, exc)
                 answer = f"Error generating answer: {exc}"
@@ -275,7 +305,48 @@ class AdvancedRAGPipeline:
             }
             for i, chunk in enumerate(chunks)
         ]
-
+    
+    def run_stream(
+        self,
+        query: str,
+):    
+        expanded = [query]
+    
+        try:
+            expanded = self._expander.expand(query)
+        except Exception as exc:
+            logger.warning("Query expansion failed: %s", exc)
+    
+        request = RetrievalRequest(
+            query=query,
+            mode=self._default_mode,
+            top_k=5,
+            final_top_k=3,
+            expanded_queries=expanded,
+        )
+    
+        result = self._retriever.retrieve(request)
+        chunks = result.chunks
+    
+        if not chunks:
+            yield "No relevant information found."
+            return
+    
+        prompt = self._prompt_builder.build(
+            query=query,
+            chunks=chunks,
+            conversation_history=self._memory.get_context(),
+        )
+    
+        full_answer = ""
+    
+        for token in self._llm.generate_stream(prompt):
+            full_answer += token
+            yield token
+    
+        self._memory.add_user(query)
+        self._memory.add_assistant(full_answer)
+    
 
 # ---------------------------------------------------------------------------
 # Module-level singleton + legacy compatibility
@@ -291,7 +362,9 @@ def get_rag_pipeline(
     global _pipeline
     if _pipeline is None:
         vector = VectorRetriever()
-        bm25 = bm25_retriever or BM25Retriever()
+        from rag.retrieval.bm25_manager import get_bm25
+
+        bm25 = bm25_retriever or get_bm25()
         reranker = CrossEncoderReranker()
         hybrid = HybridRetriever(
             vector_retriever=vector,
@@ -306,8 +379,14 @@ def run_rag(
     query: str,
     filters: Optional[MetadataFilter] = None,
     mode: Optional[RetrievalMode] = None,
+    expand_query: bool = True,
 ) -> Dict:
     """
     Legacy-compatible entry point — wraps AdvancedRAGPipeline.run().
     """
-    return get_rag_pipeline().run(query, filters=filters, mode=mode)
+    return get_rag_pipeline().run(query, filters=filters, mode=mode,expand_query=expand_query)
+
+def run_rag_stream(
+    query: str,
+):
+    yield from get_rag_pipeline().run_stream(query)

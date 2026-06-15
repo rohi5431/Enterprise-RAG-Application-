@@ -18,30 +18,32 @@ export type ChatMessage = {
   created_at?: string;
 };
 
+export type Citation = {
+  citation_number: number;
+  chunk_id: string;
+  doc_id: number;
+  doc_title: string | null;
+  doc_filename: string | null;
+  filename?: string | null;
+  page_number: number | null;
+  text_snippet: string;
+  score: number;
+  rerank_score: number | null;
+};
+
 export type ChatResponse = {
   answer: string;
   query: string;
   session_id: number;
   message_id: number;
-  feedback_id: string;
+  feedback_id?: string;
   confidence: number;
-  citations: Array<{
-    citation_number: number;
-    chunk_id: string;
-    doc_id: number;
-    doc_title: string | null;
-    doc_filename: string | null;
-    filename: string | null;
-    page_number: number | null;
-    text_snippet: string;
-    score: number;
-    rerank_score: number | null;
-  }>;
+  citations: Citation[];
   num_sources: number;
   retrieval_latency_ms: number;
   llm_latency_ms: number;
   total_latency_ms: number;
-  cache_hit: boolean;
+  cache_hit?: boolean;
 };
 
 export type SessionSummary = {
@@ -59,6 +61,6 @@ export type MessageResponse = {
   session_id: number;
   role: "user" | "assistant" | "system";
   content: string;
-  sources: Array<unknown>;
+  sources: Citation[];
   created_at: string;
 };

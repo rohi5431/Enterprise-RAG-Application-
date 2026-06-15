@@ -69,3 +69,24 @@ def ndcg_at_k(retrieved_ids: List[int], ground_truth_ids: Set[int], k: int) -> f
         return 0.0
         
     return dcg / idcg
+
+
+def average_precision(
+    retrieved_ids,
+    ground_truth_ids
+):
+    if not ground_truth_ids:
+        return 0.0
+
+    score = 0.0
+    hits = 0
+
+    for idx, doc_id in enumerate(retrieved_ids):
+
+        if doc_id in ground_truth_ids:
+
+            hits += 1
+
+            score += hits / (idx + 1)
+
+    return score / len(ground_truth_ids)

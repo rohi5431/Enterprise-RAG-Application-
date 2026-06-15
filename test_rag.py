@@ -1,7 +1,9 @@
 from rag.pipelines.rag_pipeline import run_rag
+from rag.retrieval.schemas import RetrievalMode
 
 response = run_rag(
-    "What skills are mentioned in Rohit's resume?"
+    "What skills are mentioned in Rohit's resume?",
+    mode=RetrievalMode.HYBRID_RERANKED
 )
 
 print("\n===== RESPONSE TYPE =====")
