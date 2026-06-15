@@ -80,6 +80,40 @@ The system allows users to upload documents, converts them into vector embedding
               │     Final Answer      │
               └───────────────────────┘
 ```
+```
+flowchart TB
+    subgraph Frontend["React Frontend"]
+        Chat[Chat + Streaming]
+        Citations[CitationPanel]
+        Docs[Document Dashboard]
+        Search[Semantic Search]
+        Admin[Admin Analytics]
+        Settings[Model Switcher]
+    end
+
+    subgraph API["FastAPI /api/v1"]
+        ChatAPI["/chat/message/stream"]
+        DocAPI["/documents/*"]
+        SearchAPI["/search"]
+        Cache[Redis Cache]
+        RBAC[JWT + RBAC]
+    end
+
+    subgraph RAG["RAG Pipeline"]
+        Expand[Query Expansion]
+        Vector[Qdrant Vector]
+        BM25[BM25 Sparse]
+        Fusion[RRF Fusion]
+        Rerank[Cross-Encoder]
+        LLM[Ollama / OpenAI / Gemini]
+    end
+
+    Frontend --> API
+    ChatAPI --> Cache
+    Cache --> RAG
+    RAG --> Expand --> Vector & BM25 --> Fusion --> Rerank --> LLM
+```
+
 
 ---
 ## 🔐 User Authentication
