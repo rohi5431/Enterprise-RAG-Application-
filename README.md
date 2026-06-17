@@ -26,62 +26,9 @@ The system allows users to upload documents, converts them into vector embedding
 ## 🏗️ System Architecture
 
 ```text
-                    ┌─────────────────┐
-                    │      User       │
-                    └────────┬────────┘
-                             │
-                             ▼
-                 ┌─────────────────────┐
-                 │      FastAPI        │
-                 │      Backend        │
-                 └─────────┬───────────┘
-                           │
-          ┌────────────────┴───────────────┐
-          │                                │
-          ▼                                ▼
-
- ┌──────────────────┐           ┌──────────────────┐
- │ Document Upload  │           │  User Question   │
- └────────┬─────────┘           └────────┬─────────┘
-          │                              │
-          ▼                              ▼
-
- ┌──────────────────┐           ┌──────────────────┐
- │ Text Extraction  │           │ Query Embedding  │
- └────────┬─────────┘           └────────┬─────────┘
-          │                              │
-          ▼                              ▼
-
- ┌──────────────────┐           ┌──────────────────┐
- │ Chunking Service │           │ Similarity Search│
- └────────┬─────────┘           └────────┬─────────┘
-          │                              │
-          ▼                              ▼
-
- ┌──────────────────┐           ┌──────────────────┐
- │ Embedding Model  │──────────▶│ Vector Database  │
- └────────┬─────────┘           └────────┬─────────┘
-          │                              │
-          └──────────────┬───────────────┘
-                         ▼
-
-              ┌───────────────────────┐
-              │ Retrieved Context     │
-              └───────────┬───────────┘
-                          ▼
-
-              ┌───────────────────────┐
-              │        LLM            │
-              │   Ollama / OpenAI     │
-              └───────────┬───────────┘
-                          ▼
-
-              ┌───────────────────────┐
-              │     Final Answer      │
-              └───────────────────────┘
+                <img width="3076" height="813" alt="mermaid-diagram (3)" src="https://github.com/user-attachments/assets/8cd103ef-5f13-4f19-8b4b-44a43de72eb2" />
 ```
 ```
-
 ```
 ## Architecture Overview
 <img width="3391" height="6854" alt="React Frontend Chat Stream-2026-06-15-193308" src="https://github.com/user-attachments/assets/9d1541af-b0b2-4a00-af73-1aef98fd3257" />
