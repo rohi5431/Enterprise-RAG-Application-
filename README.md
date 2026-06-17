@@ -26,8 +26,8 @@ The system allows users to upload documents, converts them into vector embedding
 ## 🏗️ System Architecture
 
 <img width="3076" height="813" alt="mermaid-diagram (3)" src="https://github.com/user-attachments/assets/8cd103ef-5f13-4f19-8b4b-44a43de72eb2" />
-```
-```
+
+
 ## Architecture Overview
 <img width="8445" height="3110" alt="mermaid-diagram (2)" src="https://github.com/user-attachments/assets/5f7c2bef-7777-4e74-9450-436aa4915746" />
 
