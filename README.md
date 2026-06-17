@@ -25,13 +25,12 @@ The system allows users to upload documents, converts them into vector embedding
 
 ## 🏗️ System Architecture
 
-```text
-                <img width="3076" height="813" alt="mermaid-diagram (3)" src="https://github.com/user-attachments/assets/8cd103ef-5f13-4f19-8b4b-44a43de72eb2" />
-```
+<img width="3076" height="813" alt="mermaid-diagram (3)" src="https://github.com/user-attachments/assets/8cd103ef-5f13-4f19-8b4b-44a43de72eb2" />
 ```
 ```
 ## Architecture Overview
-<img width="3391" height="6854" alt="React Frontend Chat Stream-2026-06-15-193308" src="https://github.com/user-attachments/assets/9d1541af-b0b2-4a00-af73-1aef98fd3257" />
+<img width="8445" height="3110" alt="mermaid-diagram (2)" src="https://github.com/user-attachments/assets/5f7c2bef-7777-4e74-9450-436aa4915746" />
+
 
 ---
 ## 🔐 User Authentication
