@@ -16,7 +16,9 @@ The system allows users to upload documents, converts them into vector embedding
 > 🚀 **Enterprise RAG Platform**
 
 ### 🔗 Live Application
-   https://ais-pre-tfiua5fhtnlfaungmzfg6a-18924415367.asia-east1.run.app
+**[Live Demo](https://ais-pre-tfiua5fhtnlfaungmzfg6a-18924415367.asia-east1.run.app)**
+
+---
 ---
 
 ## 🎯 Project Goals
