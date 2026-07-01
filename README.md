@@ -12,6 +12,11 @@ The system allows users to upload documents, converts them into vector embedding
 
 ---
 
+Development URL: https://ais-dev-tfiua5fhtnlfaungmzfg6a-18924415367.asia-east1.run.app
+Shared App URL: https://ais-pre-tfiua5fhtnlfaungmzfg6a-18924415367.asia-east1.run.app
+
+---
+
 ## 🎯 Project Goals
 
 - Build a production-ready RAG platform
